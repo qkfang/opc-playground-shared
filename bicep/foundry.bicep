@@ -29,6 +29,7 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   kind: 'AIServices'
   properties: {
     allowProjectManagement: true
+    customSubDomainName: aiServicesName
     publicNetworkAccess: 'Enabled'
     disableLocalAuth: true
     networkAcls: {
