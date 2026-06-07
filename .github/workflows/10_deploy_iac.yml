@@ -1,6 +1,9 @@
 name: 10 Deploy Infrastructure
 
 on:
+  schedule:
+    - cron: "0 20 * * *"  # 6:00 AM UTC+10
+    - cron: "0 4 * * *"   # 2:00 PM UTC+10
   push:
     branches: [main]
     paths:
