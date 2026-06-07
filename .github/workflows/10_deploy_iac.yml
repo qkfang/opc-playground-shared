@@ -33,5 +33,4 @@ jobs:
             --name 'opc-shared-dev' \
             --resource-group 'rg-playground-shared' \
             --template-file './main.bicep' \
-            --parameters './main.bicepparam' \
-            baseName='play'
+            --parameters './main.bicepparam' 
