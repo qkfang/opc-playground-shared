@@ -1,32 +1,31 @@
-@description('Azure location')
+@description('Azure region for the AI Services account.')
 param location string
 
-@description('AI Services account name (serves as Foundry hub)')
+@description('AI Services account name.')
 param aiServicesName string
 
-@description('AI Foundry project name')
-param aiProjectName string
+@description('SKU name for the AI Services account.')
+param skuName string = 'S0'
 
-@description('Primary model deployment name (gpt-4.1)')
-param primaryModelDeploymentName string = 'gpt-4.1'
+@description('Optional Log Analytics workspace resource ID used for AI Services diagnostics.')
+param logAnalyticsWorkspaceId string = ''
 
-@description('Secondary model deployment name (gpt-4.1-mini)')
-param secondaryModelDeploymentName string = 'gpt-4.1-mini'
+@description('Tags applied to the AI Services account.')
+param tags object = {}
 
-// Azure AI Services account with project management enabled
-resource aiHub 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
+resource aiHub 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiServicesName
   location: location
+  tags: tags
   identity: {
     type: 'SystemAssigned'
   }
   sku: {
-    name: 'S0'
+    name: skuName
   }
   kind: 'AIServices'
   properties: {
     allowProjectManagement: true
-    customSubDomainName: aiServicesName
     publicNetworkAccess: 'Enabled'
     disableLocalAuth: true
     networkAcls: {
@@ -35,58 +34,27 @@ resource aiHub 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
   }
 }
 
-// Azure AI Foundry Project
-resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
-  parent: aiHub
-  name: aiProjectName
-  location: location
-  identity: {
-    type: 'SystemAssigned'
-  }
-  properties: {}
-}
-
-// gpt-4.1 model deployment
-resource gpt41Deployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
-  parent: aiHub
-  name: primaryModelDeploymentName
-  sku: {
-    name: 'GlobalStandard'
-    capacity: 500
-  }
+resource aiHubDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceId)) {
+  name: 'send-to-law'
+  scope: aiHub
   properties: {
-    model: {
-      format: 'OpenAI'
-      name: 'gpt-4.1'
-      version: '2025-04-14'
-    }
-    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
-    raiPolicyName: 'Microsoft.DefaultV2'
+    workspaceId: logAnalyticsWorkspaceId
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
   }
 }
 
-// gpt-4.1-mini model deployment
-resource gpt41MiniDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-10-01' = {
-  parent: aiHub
-  name: secondaryModelDeploymentName
-  dependsOn: [gpt41Deployment]
-  sku: {
-    name: 'GlobalStandard'
-    capacity: 500
-  }
-  properties: {
-    model: {
-      format: 'OpenAI'
-      name: 'gpt-4.1-mini'
-      version: '2025-04-14'
-    }
-    versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
-    raiPolicyName: 'Microsoft.DefaultV2'
-  }
-}
-
-output aiProjectEndpoint string = aiProject.properties.endpoints['AI Foundry API']
+output aiServicesId string = aiHub.id
+output aiServicesName string = aiHub.name
 output aiServicesEndpoint string = aiHub.properties.endpoint
-output primaryModelDeploymentName string = gpt41Deployment.name
-output secondaryModelDeploymentName string = gpt41MiniDeployment.name
 output aiHubPrincipalId string = aiHub.identity.principalId
