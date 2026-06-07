@@ -31,7 +31,7 @@ resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
     allowProjectManagement: true
     customSubDomainName: aiServicesName
     publicNetworkAccess: 'Enabled'
-    disableLocalAuth: true
+    disableLocalAuth: false
     networkAcls: {
       defaultAction: 'Allow'
     }
@@ -46,6 +46,21 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = 
     type: 'SystemAssigned'
   }
   properties: {}
+}
+
+resource gpt55Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: foundry
+  name: 'gpt-5.5'
+  sku: {
+    name: 'GlobalStandard'
+    capacity: 500
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'gpt-5.5'
+    }
+  }
 }
 
 resource aiHubDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceId)) {
