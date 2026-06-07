@@ -20,6 +20,8 @@ var logAnalyticsName = '${baseName}-law'
 var appInsightsName = '${baseName}-appi'
 var foundryName = '${baseName}-foundry'
 var foundryUSName = '${baseName}-foundry-us'
+var foundryProjectName = '${baseName}-project'
+var foundryUSProjectName = '${baseName}-project-us'
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsName
@@ -55,6 +57,7 @@ module foundry 'foundry.bicep' = {
   params: {
     location: location
     aiServicesName: foundryName
+    aiProjectName: foundryProjectName
     logAnalyticsWorkspaceId: logAnalytics.id
     tags: tags
   }
@@ -65,6 +68,7 @@ module foundryUS 'foundry.bicep' = {
   params: {
     location: 'eastus2'
     aiServicesName: foundryUSName
+    aiProjectName: foundryUSProjectName
     logAnalyticsWorkspaceId: logAnalytics.id
     tags: union(tags, {
       failover: 'true'
@@ -72,10 +76,3 @@ module foundryUS 'foundry.bicep' = {
   }
 }
 
-output primaryAiServicesId string = foundry.outputs.aiServicesId
-output primaryAiServicesEndpoint string = foundry.outputs.aiServicesEndpoint
-output secondaryAiServicesId string = foundryUS.outputs.aiServicesId
-output secondaryAiServicesEndpoint string = foundryUS.outputs.aiServicesEndpoint
-output appInsightsConnectionString string = appInsights.properties.ConnectionString
-output logAnalyticsWorkspaceId string = logAnalytics.id
-output principalsConfigured array = principals

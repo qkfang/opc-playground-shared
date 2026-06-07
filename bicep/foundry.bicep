@@ -4,6 +4,9 @@ param location string
 @description('AI Services account name.')
 param aiServicesName string
 
+@description('AI Foundry project name.')
+param aiProjectName string
+
 @description('SKU name for the AI Services account.')
 param skuName string = 'S0'
 
@@ -13,7 +16,7 @@ param logAnalyticsWorkspaceId string = ''
 @description('Tags applied to the AI Services account.')
 param tags object = {}
 
-resource aiHub 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
+resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiServicesName
   location: location
   tags: tags
@@ -34,9 +37,19 @@ resource aiHub 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   }
 }
 
+resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
+  parent: foundry
+  name: aiProjectName
+  location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {}
+}
+
 resource aiHubDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceId)) {
   name: 'send-to-law'
-  scope: aiHub
+  scope: foundry
   properties: {
     workspaceId: logAnalyticsWorkspaceId
     logs: [
@@ -54,7 +67,9 @@ resource aiHubDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-prev
   }
 }
 
-output aiServicesId string = aiHub.id
-output aiServicesName string = aiHub.name
-output aiServicesEndpoint string = aiHub.properties.endpoint
-output aiHubPrincipalId string = aiHub.identity.principalId
+output aiServicesId string = foundry.id
+output aiServicesName string = foundry.name
+output aiServicesEndpoint string = foundry.properties.endpoint
+output aiHubPrincipalId string = foundry.identity.principalId
+output aiProjectEndpoint string = aiProject.properties.endpoints['AI Foundry API']
+output aiProjectPrincipalId string = aiProject.identity.principalId
