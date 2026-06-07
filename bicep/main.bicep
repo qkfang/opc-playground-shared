@@ -13,7 +13,7 @@ param projectName string
 param principals array = []
 
 var tags = {
-  project: projectName
+  SecurityControl: 'Ignore'
 }
 
 var logAnalyticsName = '${baseName}-law'
@@ -60,6 +60,7 @@ module foundry 'foundry.bicep' = {
     aiProjectName: foundryProjectName
     logAnalyticsWorkspaceId: logAnalytics.id
     tags: tags
+    principals: principals
   }
 }
 
@@ -73,6 +74,7 @@ module foundryUS 'foundry.bicep' = {
     tags: union(tags, {
       failover: 'true'
     })
+    principals: principals
   }
 }
 

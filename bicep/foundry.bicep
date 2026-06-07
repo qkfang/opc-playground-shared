@@ -16,6 +16,12 @@ param logAnalyticsWorkspaceId string = ''
 @description('Tags applied to the AI Services account.')
 param tags object = {}
 
+@description('Principals to assign the Azure AI Developer role on this Foundry account.')
+param principals array = []
+
+// Azure AI Developer role
+var azureAIDeveloperRoleId = '64702f94-c441-49e6-a78b-ef80e0188fee'
+
 resource foundry 'Microsoft.CognitiveServices/accounts@2025-06-01' = {
   name: aiServicesName
   location: location
@@ -45,12 +51,30 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = 
   identity: {
     type: 'SystemAssigned'
   }
-  properties: {}
+  properties: {
+  }
 }
 
-resource gpt55Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+resource gpt54Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
   parent: foundry
-  name: 'gpt-5.5'
+  name: 'gpt-5.4'
+  sku: {
+    name: 'GlobalStandard'
+    capacity: 200
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'gpt-5.4'
+      version: '2026-03-05'
+    }
+  }
+}
+
+resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+  parent: foundry
+  name: 'text-embedding-3-large'
+  dependsOn: [gpt54Deployment]
   sku: {
     name: 'GlobalStandard'
     capacity: 500
@@ -58,7 +82,7 @@ resource gpt55Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
   properties: {
     model: {
       format: 'OpenAI'
-      name: 'gpt-5.5'
+      name: 'text-embedding-3-large'
     }
   }
 }
@@ -82,6 +106,16 @@ resource aiHubDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-prev
     ]
   }
 }
+
+resource developerRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = [for principal in principals: {
+  name: guid(foundry.id, principal.id, azureAIDeveloperRoleId)
+  scope: foundry
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', azureAIDeveloperRoleId)
+    principalId: principal.id
+    principalType: principal.principalType
+  }
+}]
 
 output aiServicesId string = foundry.id
 output aiServicesName string = foundry.name
