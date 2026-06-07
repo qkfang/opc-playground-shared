@@ -1,64 +1,81 @@
 targetScope = 'resourceGroup'
 
 @description('Primary region for shared monitoring and the primary AI Services account.')
-param primaryLocation string = resourceGroup().location
+param location string = resourceGroup().location
 
-@description('Secondary region for the paired AI Services account.')
-param secondaryLocation string = 'eastus2'
+@description('Project base name used to derive resource names.')
+param baseName string
 
-@description('Primary Azure AI Services account name.')
-param primaryAiServicesName string = 'play-foundry'
+@description('Project name used in resource tags.')
+param projectName string
 
-@description('Secondary Azure AI Services account name.')
-param secondaryAiServicesName string = 'play-foundry-eastus2'
+@description('Additional principals reserved for role assignments.')
+param principals array = []
 
-@description('Log Analytics workspace name used by Application Insights and diagnostics.')
-param logAnalyticsName string = 'play-shared-law'
-
-@description('Workspace-based Application Insights name for the shared environment.')
-param appInsightsName string = 'play-shared-appi'
-
-@description('Tags applied to all managed resources.')
-param tags object = {
-  project: 'opc-playground-shared'
-  environment: 'shared'
+var tags = {
+  project: projectName
 }
 
-module monitoring 'monitoring.bicep' = {
-  name: 'monitoring'
+var logAnalyticsName = '${baseName}-law'
+var appInsightsName = '${baseName}-appi'
+var foundryName = '${baseName}-foundry'
+var foundryUSName = '${baseName}-foundry-us'
+
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: logAnalyticsName
+  location: location
+  tags: tags
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+    retentionInDays: 30
+    features: {
+      enableLogAccessUsingOnlyResourcePermissions: true
+    }
+  }
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: appInsightsName
+  location: location
+  tags: tags
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logAnalytics.id
+    IngestionMode: 'LogAnalytics'
+    publicNetworkAccessForIngestion: 'Enabled'
+    publicNetworkAccessForQuery: 'Enabled'
+  }
+}
+
+module foundry 'foundry.bicep' = {
+  name: 'foundry'
   params: {
-    location: primaryLocation
-    logAnalyticsName: logAnalyticsName
-    appInsightsName: appInsightsName
+    location: location
+    aiServicesName: foundryName
+    logAnalyticsWorkspaceId: logAnalytics.id
     tags: tags
   }
 }
 
-module primaryFoundry 'foundry.bicep' = {
-  name: 'primary-foundry'
+module foundryUS 'foundry.bicep' = {
+  name: 'foundryUS'
   params: {
-    location: primaryLocation
-    aiServicesName: primaryAiServicesName
-    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsId
-    tags: tags
-  }
-}
-
-module secondaryFoundry 'foundry.bicep' = {
-  name: 'secondary-foundry'
-  params: {
-    location: secondaryLocation
-    aiServicesName: secondaryAiServicesName
-    logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsId
+    location: 'eastus2'
+    aiServicesName: foundryUSName
+    logAnalyticsWorkspaceId: logAnalytics.id
     tags: union(tags, {
       failover: 'true'
     })
   }
 }
 
-output primaryAiServicesId string = primaryFoundry.outputs.aiServicesId
-output primaryAiServicesEndpoint string = primaryFoundry.outputs.aiServicesEndpoint
-output secondaryAiServicesId string = secondaryFoundry.outputs.aiServicesId
-output secondaryAiServicesEndpoint string = secondaryFoundry.outputs.aiServicesEndpoint
-output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
-output logAnalyticsWorkspaceId string = monitoring.outputs.logAnalyticsId
+output primaryAiServicesId string = foundry.outputs.aiServicesId
+output primaryAiServicesEndpoint string = foundry.outputs.aiServicesEndpoint
+output secondaryAiServicesId string = foundryUS.outputs.aiServicesId
+output secondaryAiServicesEndpoint string = foundryUS.outputs.aiServicesEndpoint
+output appInsightsConnectionString string = appInsights.properties.ConnectionString
+output logAnalyticsWorkspaceId string = logAnalytics.id
+output principalsConfigured array = principals
