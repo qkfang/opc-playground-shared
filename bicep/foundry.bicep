@@ -66,7 +66,7 @@ resource gpt54Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
   name: 'gpt-5.4'
   sku: {
     name: 'GlobalStandard'
-    capacity: 200
+    capacity: 450
   }
   properties: {
     model: {
