@@ -24,6 +24,13 @@ var foundryNUSName = '${baseName}-foundry-nus'
 var foundryProjectName = '${baseName}-project'
 var foundryUSProjectName = '${baseName}-project-us'
 var foundryNUSProjectName = '${baseName}-project-nus'
+var storageAccountName = take(toLower('${baseName}st${uniqueString(resourceGroup().id)}'), 24)
+
+
+var blobContainerNames = [
+  'file-in'
+  'file-out'
+]
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsName
@@ -53,6 +60,39 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
     publicNetworkAccessForQuery: 'Enabled'
   }
 }
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: storageAccountName
+  location: location
+  tags: tags
+  kind: 'StorageV2'
+  sku: {
+    name: 'Standard_LRS'
+  }
+  properties: {
+    allowBlobPublicAccess: false
+    allowSharedKeyAccess: false
+    minimumTlsVersion: 'TLS1_2'
+    supportsHttpsTrafficOnly: true
+    networkAcls: {
+      defaultAction: 'Allow'
+      bypass: 'AzureServices'
+    }
+  }
+}
+
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource blobContainers 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = [for containerName in blobContainerNames: {
+  parent: blobService
+  name: containerName
+  properties: {
+    publicAccess: 'None'
+  }
+}]
 
 module foundry 'foundry.bicep' = {
   name: 'foundry'
