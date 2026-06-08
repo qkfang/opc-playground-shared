@@ -19,6 +19,12 @@ param tags object = {}
 @description('Principals to assign the Azure AI Developer role on this Foundry account.')
 param principals array = []
 
+@description('Deploy gpt-5.4 and text-embedding-3-large models.')
+param deployModels bool = true
+
+@description('Deploy Whisper model (Standard SKU, only available in northcentralus and southcentralus).')
+param deployWhisper bool = false
+
 // Azure AI Developer role
 var azureAIDeveloperRoleId = '64702f94-c441-49e6-a78b-ef80e0188fee'
 
@@ -55,7 +61,7 @@ resource aiProject 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = 
   }
 }
 
-resource gpt54Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+resource gpt54Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = if (deployModels) {
   parent: foundry
   name: 'gpt-5.4'
   sku: {
@@ -71,7 +77,7 @@ resource gpt54Deployment 'Microsoft.CognitiveServices/accounts/deployments@2025-
   }
 }
 
-resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = {
+resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = if (deployModels) {
   parent: foundry
   name: 'text-embedding-3-large'
   dependsOn: [gpt54Deployment]
@@ -83,6 +89,22 @@ resource embeddingDeployment 'Microsoft.CognitiveServices/accounts/deployments@2
     model: {
       format: 'OpenAI'
       name: 'text-embedding-3-large'
+    }
+  }
+}
+
+resource whisperDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-06-01' = if (deployWhisper) {
+  parent: foundry
+  name: 'whisper'
+  sku: {
+    name: 'Standard'
+    capacity: 1
+  }
+  properties: {
+    model: {
+      format: 'OpenAI'
+      name: 'whisper'
+      version: '001'
     }
   }
 }

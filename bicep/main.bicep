@@ -20,8 +20,10 @@ var logAnalyticsName = '${baseName}-law'
 var appInsightsName = '${baseName}-appi'
 var foundryName = '${baseName}-foundry'
 var foundryUSName = '${baseName}-foundry-us'
+var foundryNUSName = '${baseName}-foundry-nus'
 var foundryProjectName = '${baseName}-project'
 var foundryUSProjectName = '${baseName}-project-us'
+var foundryNUSProjectName = '${baseName}-project-nus'
 
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: logAnalyticsName
@@ -75,6 +77,23 @@ module foundryUS 'foundry.bicep' = {
       failover: 'true'
     })
     principals: principals
+    deployModels: false
+  }
+}
+
+module foundryNUS 'foundry.bicep' = {
+  name: 'foundryNUS'
+  params: {
+    location: 'northcentralus'
+    aiServicesName: foundryNUSName
+    aiProjectName: foundryNUSProjectName
+    logAnalyticsWorkspaceId: logAnalytics.id
+    tags: union(tags, {
+      whisper: 'true'
+    })
+    principals: principals
+    deployModels: false
+    deployWhisper: true
   }
 }
 
